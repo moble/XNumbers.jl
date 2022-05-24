@@ -2,7 +2,10 @@ using XNumbers
 using Test, Random
 
 using Aqua
-Aqua.test_all(XNumbers; ambiguities=false)
+
+@testset verbose=true "Aqua quality assurance tests" begin
+    Aqua.test_all(XNumbers; ambiguities=false)
+end
 
 enabled_tests = lowercase.(ARGS)
 
@@ -23,7 +26,7 @@ function addtests(fname)
     end
 end
 
-@testset verbose=true "All tests" begin
+@testset verbose=true "Functionality tests" begin
     addtests("arithmetic.jl")
 end
 
