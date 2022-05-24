@@ -36,7 +36,8 @@ standard float types that can be advantageous in some ways.
 
 ## Citing
 
-See [`CITATION.bib`](CITATION.bib) for the relevant reference(s).
+See [`CITATION.bib`](https://github.com/moble/XNumbers.jl/blob/main/CITATION.bib) for the relevant
+reference(s).
 
 
 ## API
