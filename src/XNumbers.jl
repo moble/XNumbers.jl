@@ -7,10 +7,12 @@ struct XNumber{T<:AbstractFloat} <:AbstractFloat
     iₓ::Int
 end
 XNumber{T}(x::T) where T = XNumber{T}(x, 0)
+export XNumber
 
 
 # Radix computations
 # See more specialized versions in @require section
+log2_radix(::Type{XNumber{Float16}}) = 15
 log2_radix(::Type{XNumber{Float32}}) = 120
 log2_radix(::Type{XNumber{Float64}}) = 960
 log2_radix(::Type{XNumber{T}}) where T = round(Int, 15log2(floatmax(T))/16)
@@ -43,7 +45,7 @@ which bypasses the normalization step.  Use caution if doing so, as most
 methods assume that `XNumber`s are normalized.
 
 """
-function XNumber(f::T, i::Int) where T
+function XNumber(f::T, i::Int) where {T<:AbstractFloat}
     if abs(f) ≥ radix_sqrt(XNumber{T})
         XNumber{T}(f*radix_inverse(XNumber{T}), i+log2_radix(XNumber{T}))
     elseif abs(f) < radix_sqrt_inverse(XNumber{T})
@@ -52,7 +54,7 @@ function XNumber(f::T, i::Int) where T
         XNumber{T}(f, i)
     end
 end
-XNumber(f::T) where T = XNumber(f, 0)
+XNumber(f::T) where {T<:AbstractFloat} = XNumber(f, 0)
 
 
 """
@@ -68,7 +70,7 @@ Follows the routine given in Table 6 of Fukushima (2012).
 
 """
 float(x::XNumber{T}) where T = T(x)
-function (::Type{T})(x::XNumber{T}) where T
+function (::Type{T})(x::XNumber{T}) where {T<:AbstractFloat}
     if x.iₓ == 0
         x.x
     elseif x.iₓ > 0
@@ -103,7 +105,7 @@ include("base/types.jl")
 
 #import Base: hash, promote_type, string, show, parse, tryparse, eltype,
 
-import Base: signbit, sign, abs, flipsign, copysign, significand, exponent, precision,
+import Base: signbit, sign, abs, flipsign, copysign, significand, exponent, precision
 include("base/bits.jl")
 
 import Base: (+), (-), (*), (/), (\), (^), inv, sqrt, cbrt
@@ -113,7 +115,7 @@ export linear_combination
 import Base: (==), (!=), (<), (<=), (>=), (>), isequal, isless
 include("base/ordering.jl")
 
-import Base: iszero, isone, isinf, isnan, isinf, isfinite, issubnormal, isinteger, isodd, iseven
+import Base: iszero, isone, isinf, isnan, isfinite, issubnormal, isinteger, isodd, iseven
 include("base/qualities.jl")
 
 import Base: zero, one, typemax, typemin, floatmax, floatmin, maxintfloat

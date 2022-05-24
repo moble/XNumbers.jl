@@ -9,7 +9,7 @@ function (+)(X::XNumber{T}, Y::XNumber{S}) where {T, S}
         XNumber(X.x+Y.x, X.iₓ)
     end
 end
-function (+)(X::XNumber{T}, Y::S) where {T, S}
+function (+)(X::XNumber{T}, Y::S) where {T, S<:Number}
     TS = promote_type(T, S)
     if X.iₓ > 0
         XNumber{TS}(TS(X.x), X.iₓ)
@@ -19,7 +19,7 @@ function (+)(X::XNumber{T}, Y::S) where {T, S}
         XNumber(X.x+Y, 0)
     end
 end
-function (+)(Y::S, X::XNumber{T}) where {T, S} = X+Y
+(+)(Y::Real, X::XNumber{T}) where T = X+Y
 
 (-)(X::XNumber{T}) where T = XNumber{T}(-X.x, X.iₓ)
 function (-)(X::XNumber{T}, Y::XNumber{S}) where {T, S}
@@ -32,7 +32,7 @@ function (-)(X::XNumber{T}, Y::XNumber{S}) where {T, S}
         XNumber(X.x-Y.x, X.iₓ)
     end
 end
-function (-)(X::XNumber{T}, Y::S) where {T, S}
+function (-)(X::XNumber{T}, Y::S) where {T, S<:Real}
     TS = promote_type(T, S)
     if X.iₓ > 0
         XNumber{TS}(TS(X.x), X.iₓ)
@@ -42,7 +42,7 @@ function (-)(X::XNumber{T}, Y::S) where {T, S}
         XNumber(X.x-Y, 0)
     end
 end
-function (-)(Y::S, X::XNumber{T}) where {T, S}
+function (-)(Y::S, X::XNumber{T}) where {T, S<:Real}
     TS = promote_type(T, S)
     if X.iₓ > 0
         XNumber{TS}(TS(X.x), X.iₓ)
@@ -54,18 +54,18 @@ function (-)(Y::S, X::XNumber{T}) where {T, S}
 end
 
 (*)(X::XNumber, Y::XNumber) = XNumber(X.x*Y.x, X.iₓ+Y.iₓ)
-(*)(X::XNumber, Y) = XNumber(X.x*Y, X.iₓ)
-(*)(Y, X::XNumber) = XNumber(X.x*Y, X.iₓ)
+(*)(X::XNumber, Y::Real) = XNumber(X.x*Y, X.iₓ)
+(*)(Y::Real, X::XNumber) = XNumber(X.x*Y, X.iₓ)
 
 (/)(X::XNumber, Y::XNumber) = XNumber(X.x/Y.x, X.iₓ-Y.iₓ)
-(/)(X::XNumber, Y) = XNumber(X.x/Y, X.iₓ)
-(/)(Y, X::XNumber) = XNumber(Y/X.x, -X.iₓ)
+(/)(X::XNumber, Y::Real) = XNumber(X.x/Y, X.iₓ)
+(/)(Y::Real, X::XNumber) = XNumber(Y/X.x, -X.iₓ)
 
 (\)(X::XNumber, Y::XNumber) = XNumber(Y.x/X.x, Y.iₓ-X.iₓ)
-(\)(X::XNumber, Y) = XNumber(Y/X.x, -X.iₓ)
-(\)(X, Y::XNumber) = XNumber(Y.x/X, Y.iₓ)
+(\)(X::XNumber, Y::Real) = XNumber(Y/X.x, -X.iₓ)
+(\)(X::Real, Y::XNumber) = XNumber(Y.x/X, Y.iₓ)
 
-(^)(X::XNumber, Y) = XNumber(X.x^Y, Y*X.iₓ)
+(^)(X::XNumber, Y::Int) = XNumber(X.x^Y, Y*X.iₓ)
 
 inv(X::XNumber{T}) where T = XNumber{T}(inv(X.x), -X.iₓ)
 
