@@ -2,12 +2,37 @@ module XNumbers
 
 using Requires
 
-export XNumber
+export XNumber, xnumber, normalize
 struct XNumber{T<:AbstractFloat} <:AbstractFloat
     x::T
     iₓ::Int
 end
 XNumber{T}(x::FT) where {T,FT<:AbstractFloat} = XNumber{T}(T(x), 0)
+
+"""
+    xnumber(x)
+    xnumber(x, i)
+
+Construct an X-number with the same base type as `x`, and normalize.  If `i` is
+not included, it is assumed to be 0.
+
+It is also possible to construct an `XNumber` explicitly as `XNumber{T}(x, i)`,
+which bypasses the normalization step.  Use caution if doing so, as most
+methods assume that `XNumber`s are normalized.
+
+"""
+function xnumber(f::T, i::Int) where {T<:AbstractFloat}
+    if iszero(f)
+        XNumber{T}(0, 0)
+    elseif abs(f) ≥ radix_sqrt(XNumber{T})
+        XNumber{T}(f*radix_inverse(XNumber{T}), i+log2_radix(XNumber{T}))
+    elseif abs(f) < radix_sqrt_inverse(XNumber{T})
+        XNumber{T}(f*radix(XNumber{T}), i-log2_radix(XNumber{T}))
+    else
+        XNumber{T}(f, i)
+    end
+end
+xnumber(f::T) where {T<:AbstractFloat} = xnumber(f, 0)
 
 
 # Radix computations
@@ -19,8 +44,16 @@ log2_radix(::Type{XNumber{T}}) where T = round(Int, 15log2(floatmax(T))/16)
 
 radix(XT::Type{XNumber{T}}) where T = T(2)^(log2_radix(XT))
 radix_inverse(XT::Type{XNumber{T}}) where T = T(2)^(-log2_radix(XT))
-radix_sqrt(XT::Type{XNumber{T}}) where T = T(2)^(log2_radix(XT)÷2)
-radix_sqrt_inverse(XT::Type{XNumber{T}}) where T = T(2)^(-log2_radix(XT)÷2)
+radix_sqrt(XT::Type{XNumber{T}}) where T = T(2)^(log2_radix(XT)÷2) * ifelse(
+    iseven(log2_radix(XT)),
+    1,
+    sqrt(T(2))
+)
+radix_sqrt_inverse(XT::Type{XNumber{T}}) where T = T(2)^(-log2_radix(XT)÷2) / ifelse(
+    iseven(log2_radix(XT)),
+    1,
+    sqrt(T(2))
+)
 radix_cbrt(XT::Type{XNumber{T}}) where T = 2^(T(log2_radix(XT))/3)
 radix_cbrt2(XT::Type{XNumber{T}}) where T = 2^(2T(log2_radix(XT))/3)
 
@@ -31,54 +64,6 @@ radix_sqrt(::XNumber{T}) where T = radix_sqrt(XNumber{T})
 radix_sqrt_inverse(::XNumber{T}) where T = radix_sqrt_inverse(XNumber{T})
 radix_cbrt(::XNumber{T}) where T = radix_cbrt(XNumber{T})
 radix_cbrt2(::XNumber{T}) where T = radix_cbrt2(XNumber{T})
-
-
-"""
-    XNumber(x)
-    XNumber(x, i)
-
-Construct an X-number with the same base type as `x`, and normalize.  If `i` is
-not included, it is assumed to be 0.
-
-It is also possible to construct an `XNumber` explicitly as `XNumber{T}(x, i)`,
-which bypasses the normalization step.  Use caution if doing so, as most
-methods assume that `XNumber`s are normalized.
-
-"""
-function XNumber(f::T, i::Int) where {T<:AbstractFloat}
-    if abs(f) ≥ radix_sqrt(XNumber{T})
-        XNumber{T}(f*radix_inverse(XNumber{T}), i+log2_radix(XNumber{T}))
-    elseif abs(f) < radix_sqrt_inverse(XNumber{T})
-        XNumber{T}(f*radix(XNumber{T}), i-log2_radix(XNumber{T}))
-    else
-        XNumber{T}(f, i)
-    end
-end
-XNumber(f::T) where {T<:AbstractFloat} = XNumber(f, 0)
-
-
-"""
-    float(x)
-    Float32(x)
-    Float64(x)
-    Float128(x)
-    Double64(x)
-
-Convert an X-number `x` to its underlying float form.
-
-Follows the routine given in Table 6 of Fukushima (2012).
-
-"""
-float(x::XNumber{T}) where T = T(x)
-function (::Type{T})(x::XNumber) where {T<:AbstractFloat}
-    if x.iₓ == 0
-        T(x.x)
-    elseif x.iₓ > 0
-        T(x.x) * T(2)^(x.iₓ*log2_radix(x))
-    else # x.iₓ < 0
-        T(x.x) * T(2)^(-x.iₓ*log2_radix(x))
-    end
-end
 
 
 """
@@ -96,6 +81,28 @@ function normalize(x::XNumber{T}) where T
         XNumber{T}(x.x*radix(x), x.iₓ-1)
     else
         x
+    end
+end
+
+
+"""
+    float(x)
+    Float32(x)
+    Float64(x)
+    Float128(x)
+    Double64(x)
+
+Convert an X-number `x` to its underlying float form.
+
+Follows the routine given in Table 6 of Fukushima (2012).
+
+"""
+Base.float(x::XNumber{T}) where T = T(x)
+function (::Type{T})(x::XNumber) where {T<:AbstractFloat}
+    if x.iₓ == 0
+        T(x.x)
+    else
+        T(x.x) * T(2)^(x.iₓ*log2_radix(x))
     end
 end
 

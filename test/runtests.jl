@@ -11,7 +11,7 @@ enabled_tests = lowercase.(ARGS)
 
 help = ("help" ∈ enabled_tests || "--help" ∈ enabled_tests)
 helptests = []
-    
+
 # This block is cribbed from StaticArrays.jl/test/runtests.jl
 function addtests(fname)
     key = lowercase(splitext(fname)[1])
@@ -27,6 +27,7 @@ function addtests(fname)
 end
 
 @testset verbose=true "Functionality tests" begin
+    addtests("conversion.jl")
     addtests("arithmetic.jl")
     addtests("ordering.jl")
 end

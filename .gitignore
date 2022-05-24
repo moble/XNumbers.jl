@@ -4,3 +4,6 @@
 /Manifest.toml
 /docs/build/
 /notes/
+lcov.info
+/runtests
+/test/coverage.jl
