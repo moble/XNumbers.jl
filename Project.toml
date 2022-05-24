@@ -1,7 +1,7 @@
 name = "XNumbers"
 uuid = "4adfaa65-5b36-4fba-9909-626196083c27"
 authors = ["Michael Boyle <michael.oliver.boyle@gmail.com> and contributors"]
-version = "0.1.0"
+version = "0.2.0"
 
 [deps]
 Requires = "ae029012-a4dd-5104-9daa-d747884805df"
