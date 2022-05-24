@@ -28,6 +28,7 @@ end
 
 @testset verbose=true "Functionality tests" begin
     addtests("arithmetic.jl")
+    addtests("ordering.jl")
 end
 
 if help
