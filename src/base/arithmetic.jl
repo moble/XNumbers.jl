@@ -9,7 +9,7 @@ function (+)(X::XNumber{T}, Y::XNumber{S}) where {T, S}
         XNumber(X.x+Y.x, X.iₓ)
     end
 end
-function (+)(X::XNumber{T}, Y::S) where {T, S<:Number}
+function (+)(X::XNumber{T}, Y::S) where {T, S<:Union{Real, AbstractFloat}}
     TS = promote_type(T, S)
     if X.iₓ > 0
         XNumber{TS}(TS(X.x), X.iₓ)
@@ -19,7 +19,7 @@ function (+)(X::XNumber{T}, Y::S) where {T, S<:Number}
         XNumber(X.x+Y, 0)
     end
 end
-(+)(Y::Real, X::XNumber{T}) where T = X+Y
+(+)(Y::S, X::XNumber{T}) where {T, S<:Union{Real, AbstractFloat}} = X+Y
 
 (-)(X::XNumber{T}) where T = XNumber{T}(-X.x, X.iₓ)
 function (-)(X::XNumber{T}, Y::XNumber{S}) where {T, S}
@@ -27,25 +27,25 @@ function (-)(X::XNumber{T}, Y::XNumber{S}) where {T, S}
     if X.iₓ > Y.iₓ
         XNumber{TS}(TS(X.x), X.iₓ)
     elseif Y.iₓ > X.iₓ
-        XNumber{TS}(TS(Y.x), Y.iₓ)
+        XNumber{TS}(-TS(Y.x), Y.iₓ)
     else
         XNumber(X.x-Y.x, X.iₓ)
     end
 end
-function (-)(X::XNumber{T}, Y::S) where {T, S<:Real}
+function (-)(X::XNumber{T}, Y::S) where {T, S<:Union{Real, AbstractFloat}}
     TS = promote_type(T, S)
     if X.iₓ > 0
         XNumber{TS}(TS(X.x), X.iₓ)
     elseif X.iₓ < 0
-        XNumber{TS}(TS(Y), 0)
+        XNumber{TS}(-TS(Y), 0)
     else
         XNumber(X.x-Y, 0)
     end
 end
-function (-)(Y::S, X::XNumber{T}) where {T, S<:Real}
+function (-)(Y::S, X::XNumber{T}) where {T, S<:Union{Real, AbstractFloat}}
     TS = promote_type(T, S)
     if X.iₓ > 0
-        XNumber{TS}(TS(X.x), X.iₓ)
+        XNumber{TS}(-TS(X.x), X.iₓ)
     elseif X.iₓ < 0
         XNumber{TS}(TS(Y), 0)
     else
@@ -54,16 +54,16 @@ function (-)(Y::S, X::XNumber{T}) where {T, S<:Real}
 end
 
 (*)(X::XNumber, Y::XNumber) = XNumber(X.x*Y.x, X.iₓ+Y.iₓ)
-(*)(X::XNumber, Y::Real) = XNumber(X.x*Y, X.iₓ)
-(*)(Y::Real, X::XNumber) = XNumber(X.x*Y, X.iₓ)
+(*)(X::XNumber, Y::S) where {S<:Union{Real, AbstractFloat}} = XNumber(X.x*Y, X.iₓ)
+(*)(Y::S, X::XNumber) where {S<:Union{Real, AbstractFloat}} = XNumber(X.x*Y, X.iₓ)
 
 (/)(X::XNumber, Y::XNumber) = XNumber(X.x/Y.x, X.iₓ-Y.iₓ)
-(/)(X::XNumber, Y::Real) = XNumber(X.x/Y, X.iₓ)
-(/)(Y::Real, X::XNumber) = XNumber(Y/X.x, -X.iₓ)
+(/)(X::XNumber, Y::S) where {S<:Union{Real, AbstractFloat}} = XNumber(X.x/Y, X.iₓ)
+(/)(Y::S, X::XNumber) where {S<:Union{Real, AbstractFloat}} = XNumber(Y/X.x, -X.iₓ)
 
 (\)(X::XNumber, Y::XNumber) = XNumber(Y.x/X.x, Y.iₓ-X.iₓ)
-(\)(X::XNumber, Y::Real) = XNumber(Y/X.x, -X.iₓ)
-(\)(X::Real, Y::XNumber) = XNumber(Y.x/X, Y.iₓ)
+(\)(X::XNumber, Y::S) where {S<:Union{Real, AbstractFloat}} = XNumber(Y/X.x, -X.iₓ)
+(\)(X::S, Y::XNumber) where {S<:Union{Real, AbstractFloat}} = XNumber(Y.x/X, Y.iₓ)
 
 (^)(X::XNumber, Y::Int) = XNumber(X.x^Y, Y*X.iₓ)
 

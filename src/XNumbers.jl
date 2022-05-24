@@ -2,12 +2,12 @@ module XNumbers
 
 using Requires
 
+export XNumber
 struct XNumber{T<:AbstractFloat} <:AbstractFloat
     x::T
     iₓ::Int
 end
-XNumber{T}(x::T) where T = XNumber{T}(x, 0)
-export XNumber
+XNumber{T}(x::FT) where {T,FT<:AbstractFloat} = XNumber{T}(T(x), 0)
 
 
 # Radix computations
@@ -17,10 +17,10 @@ log2_radix(::Type{XNumber{Float32}}) = 120
 log2_radix(::Type{XNumber{Float64}}) = 960
 log2_radix(::Type{XNumber{T}}) where T = round(Int, 15log2(floatmax(T))/16)
 
-radix(XT::Type{XNumber{T}}) where T = 2^T(log2_radix(XT))
-radix_inverse(XT::Type{XNumber{T}}) where T = 2^T(-log2_radix(XT))
-radix_sqrt(XT::Type{XNumber{T}}) where T = 2^T(log2_radix(XT)÷2)
-radix_sqrt_inverse(XT::Type{XNumber{T}}) where T = 2^T(-log2_radix(XT)÷2)
+radix(XT::Type{XNumber{T}}) where T = T(2)^(log2_radix(XT))
+radix_inverse(XT::Type{XNumber{T}}) where T = T(2)^(-log2_radix(XT))
+radix_sqrt(XT::Type{XNumber{T}}) where T = T(2)^(log2_radix(XT)÷2)
+radix_sqrt_inverse(XT::Type{XNumber{T}}) where T = T(2)^(-log2_radix(XT)÷2)
 radix_cbrt(XT::Type{XNumber{T}}) where T = 2^(T(log2_radix(XT))/3)
 radix_cbrt2(XT::Type{XNumber{T}}) where T = 2^(2T(log2_radix(XT))/3)
 
@@ -70,13 +70,13 @@ Follows the routine given in Table 6 of Fukushima (2012).
 
 """
 float(x::XNumber{T}) where T = T(x)
-function (::Type{T})(x::XNumber{T}) where {T<:AbstractFloat}
+function (::Type{T})(x::XNumber) where {T<:AbstractFloat}
     if x.iₓ == 0
-        x.x
+        T(x.x)
     elseif x.iₓ > 0
-        x.x * radix(x)
+        T(x.x) * T(2)^(x.iₓ*log2_radix(x))
     else # x.iₓ < 0
-        x.x * radix_inverse(x)
+        T(x.x) * T(2)^(-x.iₓ*log2_radix(x))
     end
 end
 

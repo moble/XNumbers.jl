@@ -31,7 +31,10 @@ could be *partially* achieved using certain other types like `BigFloat`, X-numbe
 implemented far more efficiently — requiring anywhere from 10% to a few times longer than similar
 computations with the underlying float type.  However, see [Xing et
 al. (2020)](https://doi.org/10.1007/s00190-019-01331-0) for techniques to compute ALFs using
-standard float types that can be advantageous in some ways.
+standard float types that can be advantageous in some ways.  X-numbers might also find use in
+Machine Learning, where the precision of a `Float64` is unnecessary, but the range of a `Float16`
+may be too restrictive.
+
 
 
 ## Citing
