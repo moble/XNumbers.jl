@@ -7,7 +7,7 @@ struct XNumber{T<:AbstractFloat} <:AbstractFloat
     x::T
     iₓ::Int
 end
-XNumber{T}(x::FT) where {T,FT<:AbstractFloat} = XNumber{T}(T(x), 0)
+XNumber{T}(x::FT) where {T,FT<:AbstractFloat} = XNumber{T}(T(x), typemin(Int))
 
 """
     xnumber(x)
@@ -23,7 +23,7 @@ methods assume that `XNumber`s are normalized.
 """
 function xnumber(f::T, i::Int) where {T<:AbstractFloat}
     if iszero(f)
-        XNumber{T}(0, 0)
+        XNumber{T}(0, typemin(Int))
     elseif abs(f) ≥ radix_sqrt(XNumber{T})
         XNumber{T}(f*radix_inverse(XNumber{T}), i+log2_radix(XNumber{T}))
     elseif abs(f) < radix_sqrt_inverse(XNumber{T})
@@ -32,7 +32,7 @@ function xnumber(f::T, i::Int) where {T<:AbstractFloat}
         XNumber{T}(f, i)
     end
 end
-xnumber(f::T) where {T<:AbstractFloat} = xnumber(f, 0)
+xnumber(f::T) where {T<:AbstractFloat} = xnumber(f, typemin(Int))
 
 
 # Radix computations
@@ -44,18 +44,10 @@ log2_radix(::Type{XNumber{T}}) where T = round(Int, 15log2(floatmax(T))/16)
 
 radix(XT::Type{XNumber{T}}) where T = T(2)^(log2_radix(XT))
 radix_inverse(XT::Type{XNumber{T}}) where T = T(2)^(-log2_radix(XT))
-radix_sqrt(XT::Type{XNumber{T}}) where T = T(2)^(log2_radix(XT)÷2) * ifelse(
-    iseven(log2_radix(XT)),
-    1,
-    sqrt(T(2))
-)
-radix_sqrt_inverse(XT::Type{XNumber{T}}) where T = T(2)^(-log2_radix(XT)÷2) / ifelse(
-    iseven(log2_radix(XT)),
-    1,
-    sqrt(T(2))
-)
-radix_cbrt(XT::Type{XNumber{T}}) where T = 2^(T(log2_radix(XT))/3)
-radix_cbrt2(XT::Type{XNumber{T}}) where T = 2^(2T(log2_radix(XT))/3)
+radix_sqrt(XT::Type{XNumber{T}}) where T = T(2)^(log2_radix(XT)//2)
+radix_sqrt_inverse(XT::Type{XNumber{T}}) where T = T(2)^(-log2_radix(XT)//2)
+radix_cbrt(XT::Type{XNumber{T}}) where T = T(2)^(log2_radix(XT)//3)
+radix_cbrt2(XT::Type{XNumber{T}}) where T = T(2)^(2log2_radix(XT)//3)
 
 log2_radix(::XNumber{T}) where T = log2_radix(XNumber{T})
 radix(::XNumber{T}) where T = radix(XNumber{T})
@@ -71,7 +63,7 @@ radix_cbrt2(::XNumber{T}) where T = radix_cbrt2(XNumber{T})
 
 Normalize a weakly normalized X-number.
 
-Follows the routine given in Table 7 of Fukushima (2012).
+Follows the routine `xnorm` given in Table 7 of Fukushima (2012).
 
 """
 function normalize(x::XNumber{T}) where T
@@ -84,6 +76,35 @@ function normalize(x::XNumber{T}) where T
     end
 end
 
+# subroutine xnorm(x,ix)
+# integer ix,IND
+# real*8 x,w,BIG,BIGI,BIGS,BIGSI
+# parameter (IND=960,BIG=2.d0**IND,BIGI=2.d0**(-IND))
+# parameter (BIGS=2.d0**(IND/2),BIGSI=2.d0**(-IND/2))
+# w=abs(x)
+# if(w.ge.BIGS) then
+# x=x*BIGI; ix=ix+1
+# elseif(w.lt.BIGSI) then
+# x=x*BIG; ix=ix-1
+# endif
+# return; end
+
+function xnorm(x::Float64, ix::Int64)
+    i_x = 960  # Valid only for Float64
+    B = 2.0^i_x
+    B⁻¹ = 2.0^(-i_x)
+    B¹ꜝ² = 2.0^(i_x/2)
+    B⁻¹ꜝ² = 2.0^(-i_x/2)
+    w = abs(x)
+    if w >= B¹ꜝ²
+        x *= B⁻¹
+        ix += 1
+    elseif w < B⁻¹ꜝ²
+        x *= B
+        ix -= 1
+    end
+    return x, ix
+end
 
 """
     float(x)
@@ -94,7 +115,7 @@ end
 
 Convert an X-number `x` to its underlying float form.
 
-Follows the routine given in Table 6 of Fukushima (2012).
+Follows the routine `x2f` given in Table 6 of Fukushima (2012).
 
 """
 Base.float(x::XNumber{T}) where T = T(x)
