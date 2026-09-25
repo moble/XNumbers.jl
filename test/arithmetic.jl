@@ -10,38 +10,28 @@
         for i in -6:6
     ]
 
+    # Sums are checked against exact BigFloat sums.  Terms whose exponents differ
+    # by more than one are dropped, which costs a relative error of at most
+    # 1/radix, well below eps(T).
     @testset verbose=true "Addition" begin
         for x in xnumbers
             @test (+x).x == x.x
             @test (+x).iₓ == x.iₓ
             @test (x+x).x == 2*(x.x)
             @test (x+x).iₓ == x.iₓ  # Assumes x.x < radix(x)/2
+            @test x + zero(x) == x
+            @test zero(x) + x == x
             if x.iₓ == 0
-                @test (x + T(1.2)).x == x.x + T(1.2)
-                @test (x + T(1.2)).iₓ == x.iₓ
-                @test (T(1.2) + x).x == x.x + T(1.2)
-                @test (T(1.2) + x).iₓ == x.iₓ
-            elseif x.iₓ < 0
-                @test (x + T(1.2)).x == T(1.2)
-                @test (x + T(1.2)).iₓ == 0
-                @test (T(1.2) + x).x == T(1.2)
-                @test (T(1.2) + x).iₓ == 0
-            else # x.iₓ > 0
-                @test (x + T(1.2)).x == x.x
-                @test (x + T(1.2)).iₓ == x.iₓ
-                @test (T(1.2) + x).x == x.x
-                @test (T(1.2) + x).iₓ == x.iₓ
+                @test x + T(1.2) == XNumber{T}(x.x + T(1.2), x.iₓ)
+                @test T(1.2) + x == XNumber{T}(x.x + T(1.2), x.iₓ)
             end
+            @test BigFloat(x + T(1.2)) ≈ BigFloat(x) + BigFloat(T(1.2)) rtol=2eps(T)
+            @test BigFloat(T(1.2) + x) ≈ BigFloat(x) + BigFloat(T(1.2)) rtol=2eps(T)
             for y in xnumbers
+                @test BigFloat(x+y) ≈ BigFloat(x) + BigFloat(y) rtol=2eps(T)
+                @test x+y == y+x
                 if x.iₓ == y.iₓ
-                    @test (x+y).x == x.x+y.x
-                    @test (x+y).iₓ == x.iₓ
-                elseif (!iszero(x.x) && x.iₓ > y.iₓ) || iszero(y.x)
-                    @test x+y == x
-                    @test y+x == x
-                else # x.iₓ < y.iₓ
-                    @test x+y == y
-                    @test y+x == y
+                    @test x+y == XNumber{T}(x.x+y.x, x.iₓ)
                 end
             end
         end
@@ -51,34 +41,21 @@
         for x in xnumbers
             @test (-x).x == -x.x
             @test (-x).iₓ == x.iₓ
-            @test (x-x).x == 0*(x.x)
-            @test (x-x).iₓ == x.iₓ
+            @test iszero(x-x)
+            @test (x-x).iₓ == XNumbers.zero_exponent
+            @test x - zero(x) == x
+            @test zero(x) - x == -x
             if x.iₓ == 0
-                @test (x - T(1.2)).x == x.x - T(1.2)
-                @test (x - T(1.2)).iₓ == x.iₓ
-                @test (T(1.2) - x).x == T(1.2) - x.x
-                @test (T(1.2) - x).iₓ == x.iₓ
-            elseif x.iₓ < 0
-                @test (x - T(1.2)).x == -T(1.2)
-                @test (x - T(1.2)).iₓ == 0
-                @test (T(1.2) - x).x == T(1.2)
-                @test (T(1.2) - x).iₓ == 0
-            else # x.iₓ > 0
-                @test (x - T(1.2)).x == x.x
-                @test (x - T(1.2)).iₓ == x.iₓ
-                @test (T(1.2) - x).x == -x.x
-                @test (T(1.2) - x).iₓ == x.iₓ
+                @test x - T(1.2) == XNumber{T}(x.x - T(1.2), x.iₓ)
+                @test T(1.2) - x == XNumber{T}(T(1.2) - x.x, x.iₓ)
             end
+            @test BigFloat(x - T(1.2)) ≈ BigFloat(x) - BigFloat(T(1.2)) rtol=2eps(T)
+            @test BigFloat(T(1.2) - x) ≈ BigFloat(T(1.2)) - BigFloat(x) rtol=2eps(T)
             for y in xnumbers
+                @test BigFloat(x-y) ≈ BigFloat(x) - BigFloat(y) rtol=2eps(T)
+                @test x-y == x+(-y)
                 if x.iₓ == y.iₓ
-                    @test (x-y).x == x.x-y.x
-                    @test (x-y).iₓ == x.iₓ
-                elseif (!iszero(x.x) && x.iₓ > y.iₓ) || iszero(y.x)
-                    @test x-y == x
-                    @test y-x == -x
-                else # x.iₓ < y.iₓ
-                    @test x-y == -y
-                    @test y-x == y
+                    @test x-y == XNumber{T}(x.x-y.x, x.iₓ)
                 end
             end
         end
@@ -122,9 +99,9 @@
     @testset verbose=true "Linear combination" begin
         floats = T[-3.4, -1.2, -1, 1, 1.2, 3.4]
         for f in floats
-            for X in filter(!iszero, xnumbers)
+            for X in xnumbers
                 for g in floats
-                    for Y in filter(!iszero, xnumbers)
+                    for Y in xnumbers
                         l = linear_combination(f, X, g, Y)
                         e = normalize(f*X + g*Y)
                         @test l.x ≈ e.x rtol=5eps(T)

@@ -3,11 +3,42 @@ module XNumbers
 using Requires
 
 export XNumber, xnumber, normalize
+
+# Every zero is stored with `zero_exponent`, which is lower than the exponent of
+# any nonzero X-number, and every infinity or NaN with `nonfinite_exponent`,
+# which is higher.  Comparing exponents therefore orders magnitudes correctly
+# without special cases for these values.  Finite nonzero exponents are expected
+# to lie within `±max_exponent`; the margins between these constants keep the
+# difference of any two exponents from overflowing an `Int`.
+const zero_exponent = typemin(Int) ÷ 4
+const nonfinite_exponent = typemax(Int) ÷ 4
+const max_exponent = typemax(Int) ÷ 8
+
 struct XNumber{T<:AbstractFloat} <:AbstractFloat
     x::T
     iₓ::Int
+    function XNumber{T}(x, iₓ) where {T<:AbstractFloat}
+        xT = convert(T, x)
+        new{T}(xT, ifelse(iszero(xT), zero_exponent, ifelse(isfinite(xT), iₓ, nonfinite_exponent)))
+    end
 end
-XNumber{T}(x::FT) where {T,FT<:AbstractFloat} = XNumber{T}(T(x), typemin(Int))
+XNumber(x::T, iₓ) where {T<:AbstractFloat} = XNumber{T}(x, iₓ)
+XNumber{T}(x::Real) where {T<:AbstractFloat} = xnumber(T(x))
+# Needed to take precedence over the method in Base for Rational to AbstractFloat
+XNumber{T}(x::Rational) where {T<:AbstractFloat} = xnumber(T(x))
+XNumber{T}(X::XNumber{T}) where {T<:AbstractFloat} = X
+function XNumber{T}(X::XNumber{S}) where {T<:AbstractFloat, S<:AbstractFloat}
+    if iszero(X.x) || !isfinite(X.x)
+        XNumber{T}(X.x, 0)
+    else
+        # Re-express the binary exponent in T's radix, folding the remainder of
+        # at most half that radix into a significand in [1, 2)
+        l = log2_radix(XNumber{T})
+        h = l ÷ 2
+        i, r = fldmod(widemul(X.iₓ, log2_radix(X)) + exponent(X.x) + h, l)
+        normalize(XNumber{T}(T(significand(X.x)) * T(2)^(Int(r) - h), Int(i)))
+    end
+end
 
 """
     xnumber(x)
@@ -18,21 +49,19 @@ not included, it is assumed to be 0.
 
 It is also possible to construct an `XNumber` explicitly as `XNumber{T}(x, i)`,
 which bypasses the normalization step.  Use caution if doing so, as most
-methods assume that `XNumber`s are normalized.
+methods assume that `XNumber`s are normalized.  Zeros, infinities, and NaNs are
+always given their special exponents, however `i` is chosen.
 
 """
 function xnumber(f::T, i::Int) where {T<:AbstractFloat}
-    if iszero(f)
-        XNumber{T}(0, typemin(Int))
-    elseif abs(f) ≥ radix_sqrt(XNumber{T})
-        XNumber{T}(f*radix_inverse(XNumber{T}), i+log2_radix(XNumber{T}))
-    elseif abs(f) < radix_sqrt_inverse(XNumber{T})
-        XNumber{T}(f*radix(XNumber{T}), i-log2_radix(XNumber{T}))
-    else
-        XNumber{T}(f, i)
+    X = normalize(XNumber{T}(f, i))
+    # One step suffices unless f is very far from 1, as Float16 subnormals are
+    while (Y = normalize(X)) !== X
+        X = Y
     end
+    X
 end
-xnumber(f::T) where {T<:AbstractFloat} = xnumber(f, typemin(Int))
+xnumber(f::T) where {T<:AbstractFloat} = xnumber(f, 0)
 
 
 # Radix computations
@@ -67,6 +96,18 @@ Follows the routine `xnorm` given in Table 7 of Fukushima (2012).
 
 """
 function normalize(x::XNumber{T}) where T
+    # subroutine xnorm(x,ix)
+    # integer ix,IND
+    # real*8 x,w,BIG,BIGI,BIGS,BIGSI
+    # parameter (IND=960,BIG=2.d0**IND,BIGI=2.d0**(-IND))
+    # parameter (BIGS=2.d0**(IND/2),BIGSI=2.d0**(-IND/2))
+    # w=abs(x)
+    # if(w.ge.BIGS) then
+    # x=x*BIGI; ix=ix+1
+    # elseif(w.lt.BIGSI) then
+    # x=x*BIG; ix=ix-1
+    # endif
+    # return; end
     if abs(x.x) ≥ radix_sqrt(x)
         XNumber{T}(x.x*radix_inverse(x), x.iₓ+1)
     elseif abs(x.x) < radix_sqrt_inverse(x)
@@ -74,36 +115,6 @@ function normalize(x::XNumber{T}) where T
     else
         x
     end
-end
-
-# subroutine xnorm(x,ix)
-# integer ix,IND
-# real*8 x,w,BIG,BIGI,BIGS,BIGSI
-# parameter (IND=960,BIG=2.d0**IND,BIGI=2.d0**(-IND))
-# parameter (BIGS=2.d0**(IND/2),BIGSI=2.d0**(-IND/2))
-# w=abs(x)
-# if(w.ge.BIGS) then
-# x=x*BIGI; ix=ix+1
-# elseif(w.lt.BIGSI) then
-# x=x*BIG; ix=ix-1
-# endif
-# return; end
-
-function xnorm(x::Float64, ix::Int64)
-    i_x = 960  # Valid only for Float64
-    B = 2.0^i_x
-    B⁻¹ = 2.0^(-i_x)
-    B¹ꜝ² = 2.0^(i_x/2)
-    B⁻¹ꜝ² = 2.0^(-i_x/2)
-    w = abs(x)
-    if w >= B¹ꜝ²
-        x *= B⁻¹
-        ix += 1
-    elseif w < B⁻¹ꜝ²
-        x *= B
-        ix -= 1
-    end
-    return x, ix
 end
 
 """
@@ -120,10 +131,14 @@ Follows the routine `x2f` given in Table 6 of Fukushima (2012).
 """
 Base.float(x::XNumber{T}) where T = T(x)
 function (::Type{T})(x::XNumber) where {T<:AbstractFloat}
-    if x.iₓ == 0
+    if x.iₓ == 0 || iszero(x.x) || !isfinite(x.x)
         T(x.x)
     else
-        T(x.x) * T(2)^(x.iₓ*log2_radix(x))
+        # Scaling the significand, rather than x.x, keeps the intermediate value
+        # in range for any T; the exponent is widened and clamped so that
+        # extreme values give 0 or Inf rather than overflowing
+        e = widemul(x.iₓ, log2_radix(x)) + exponent(x.x)
+        ldexp(T(significand(x.x)), Int(clamp(e, typemin(Int), typemax(Int))))
     end
 end
 
@@ -134,6 +149,7 @@ include("base/types.jl")
 #import Base: hash, promote_type, string, show, parse, tryparse, eltype,
 
 import Base: signbit, sign, abs, flipsign, copysign, significand, exponent, precision
+import Base: ldexp, decompose
 include("base/bits.jl")
 
 import Base: (+), (-), (*), (/), (\), (^), inv, sqrt, cbrt

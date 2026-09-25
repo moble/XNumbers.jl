@@ -92,4 +92,43 @@
         end
     end
 
+    # A sorted list spanning signs, zeros, and infinities, with exponents that
+    # disagree with the order whenever the signs are negative
+    sorted = [
+        xnumber(-T(Inf)), XNumber{T}(-3.4, 2), XNumber{T}(-1.2, 2), XNumber{T}(-1.2, 1),
+        XNumber{T}(-1.2, 0), XNumber{T}(-1.2, -1), xnumber(zero(T)),
+        XNumber{T}(1.2, -1), XNumber{T}(1.2, 0), XNumber{T}(1.2, 1),
+        XNumber{T}(3.4, 1), XNumber{T}(1.2, 2), xnumber(T(Inf)),
+    ]
+    for (i,x) in enumerate(sorted)
+        for (j,y) in enumerate(sorted)
+            @test (x < y) == (i < j)
+            @test (x ≤ y) == (i ≤ j)
+            @test (x > y) == (i > j)
+            @test (x ≥ y) == (i ≥ j)
+            @test (x == y) == (i == j)
+            @test isless(x, y) == (i < j)
+        end
+    end
+    @test issorted(sorted)
+    @test sort(reverse(sorted)) == sorted
+
+    # Comparisons with plain reals, including zero
+    Z = xnumber(zero(T))
+    @test Z == 0
+    @test Z == -zero(T)
+    @test Z < 1 && Z > -1
+    @test XNumber{T}(-1.2, 1) < -1 && XNumber{T}(-1.2, -1) > -1
+    @test XNumber{T}(1.2, -1) < 1 && XNumber{T}(1.2, -1) > 0
+    @test isequal(Z, zero(T)) && !isequal(Z, -zero(T))
+    @test isless(xnumber(-zero(T)), Z)
+
+    # NaN is unordered, except under isless, where it sorts last
+    N = xnumber(T(NaN))
+    for x in sorted
+        @test !(N < x) && !(x < N) && !(N == x) && !(N ≤ x) && !(x ≤ N)
+        @test isless(x, N) && !isless(N, x)
+    end
+    @test isequal(N, N) && N != N
+
 end

@@ -30,6 +30,8 @@ end
     addtests("conversion.jl")
     addtests("arithmetic.jl")
     addtests("ordering.jl")
+    addtests("math.jl")
+    addtests("promotion.jl")
 end
 
 if help
