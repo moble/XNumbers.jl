@@ -6,4 +6,3 @@ Manifest.toml
 /notes/
 lcov.info
 /runtests
-/test/coverage.jl
