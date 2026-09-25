@@ -1,6 +1,15 @@
+# https://docs.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
 version: 2
 updates:
   - package-ecosystem: "github-actions"
+    directory: "/" # Location of package manifests
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "julia"
+    # The top-level Project.toml lists the test, docs and benchmark projects as members of its
+    # workspace, so this one directory covers all four projects.  Each of them has a `julia`
+    # compat entry, which keeps Dependabot from writing nonsensical compat bounds for the
+    # standard libraries, such as `"< 0.0.1, 1"`.
     directory: "/"
     schedule:
       interval: "weekly"
